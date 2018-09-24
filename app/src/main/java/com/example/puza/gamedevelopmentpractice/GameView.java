@@ -24,6 +24,9 @@ import java.util.ArrayList;
 
 public class GameView extends SurfaceView implements Runnable {
 
+    //context to be used in onTouchEvent to cause the activity transition from GameActivity to MainActivity
+    Context context;
+
     volatile boolean playing;
     private Thread gameThread = null;
     private Player player;
@@ -69,8 +72,16 @@ public class GameView extends SurfaceView implements Runnable {
     SharedPreferences sharedPreferences;
     /*-----------------------------------------*/
 
+    //Adding sound
+    //the mediaplayer objects to configure the background music
+    static MediaPlayer gameOnsound;
+    final MediaPlayer killedEnemysound;
+    final MediaPlayer gameOversound;
+
     public GameView(Context context, int screenX, int screenY) {
         super(context);
+        this.context = context;
+
         player = new Player(context, screenX, screenY);
 
         surfaceHolder = getHolder();
@@ -116,6 +127,15 @@ public class GameView extends SurfaceView implements Runnable {
 
         /*-----------Adding scores-----------------*/
 
+        //adding sound
+        //initializing the media players for the game sounds
+        gameOnsound = MediaPlayer.create(context,R.raw.gameon);
+        killedEnemysound = MediaPlayer.create(context,R.raw.killedenemy);
+        gameOversound = MediaPlayer.create(context,R.raw.gameover);
+
+        //starting the game music as the game starts
+        gameOnsound.start();
+
     }
 
 
@@ -139,7 +159,6 @@ public class GameView extends SurfaceView implements Runnable {
         boom.setY(-250);
 
         for (Star s : stars) {
-
             s.update(player.getSpeed());
         }
 
@@ -151,37 +170,39 @@ public class GameView extends SurfaceView implements Runnable {
         enemies.update(player.getSpeed());
         //if collision occurs with player
         if (Rect.intersects(player.getDetectCollision(), enemies.getDetectCollision())) {
-
             //displaying boom at that location
             boom.setX(enemies.getX());
             boom.setY(enemies.getY());
 
-
             //playing a sound at the collision between player and the enemy
-
-
+            killedEnemysound.start();
             enemies.setX(-200);
-        }// the condition where player misses the enemy
-        else{
+        }
 
+        else{// the condition where player misses the enemy
             //if the enemy has just entered
             if(flag){
-
-                //if player's x coordinate is more than the enemies's x coordinate.i.e. enemy has just passed across the player
+                //if player's x coordinate is equal to enemies's y coordinate
                 if(player.getDetectCollision().exactCenterX()>=enemies.getDetectCollision().exactCenterX()){
 
                     //increment countMisses
                     countMisses++;
 
-
                     //setting the flag false so that the else part is executed only when new enemy enters the screen
                     flag = false;
+
                     //if no of Misses is equal to 3, then game is over.
                     if(countMisses==3){
 
                         //setting playing false to stop the game.
                         playing = false;
                         isGameOver = true;
+
+
+                        //stopping the gameon music
+                        gameOnsound.stop();
+                        //play the game over sound
+                        gameOversound.start();
 
                         //Assigning the scores to the highscore integer array
                         for(int i=0;i<4;i++){
@@ -195,14 +216,19 @@ public class GameView extends SurfaceView implements Runnable {
 
                         //storing the scores through shared Preferences
                         SharedPreferences.Editor e = sharedPreferences.edit();
+
                         for(int i=0;i<4;i++){
+
                             int j = i+1;
                             e.putInt("score"+j,highScore[i]);
                         }
                         e.apply();
+
                     }
+
                 }
             }
+
         }
 
         //updating the friend ships coordinates
@@ -218,8 +244,14 @@ public class GameView extends SurfaceView implements Runnable {
             //setting the isGameOver true as the game is over
             isGameOver = true;
 
+            //stopping the gameon music
+            gameOnsound.stop();
+            //play the game over sound
+            gameOversound.start();
+
             //Assigning the scores to the highscore integer array
             for(int i=0;i<4;i++){
+
                 if(highScore[i]<score){
 
                     final int finalI = i;
@@ -227,15 +259,17 @@ public class GameView extends SurfaceView implements Runnable {
                     break;
                 }
             }
-
             //storing the scores through shared Preferences
             SharedPreferences.Editor e = sharedPreferences.edit();
+
             for(int i=0;i<4;i++){
+
                 int j = i+1;
                 e.putInt("score"+j,highScore[i]);
             }
             e.apply();
         }
+
     }
 
     private void draw() {
@@ -335,6 +369,19 @@ public class GameView extends SurfaceView implements Runnable {
                 player.setBoosting();
                 break;
         }
+
+        //if the game's over, tapping on game over screen sends you to main activity
+        if (isGameOver){
+            if (motionEvent.getAction()==MotionEvent.ACTION_DOWN){
+                context.startActivity(new Intent(context, MainActivity.class));
+            }
+        }
         return true;
     }
+
+    //stop the music on exit
+    public static void stopMusic(){
+        gameOnsound.stop();
+    }
+
 }
