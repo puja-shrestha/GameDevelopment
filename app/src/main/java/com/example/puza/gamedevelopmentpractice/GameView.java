@@ -1,13 +1,24 @@
 package com.example.puza.gamedevelopmentpractice;
 
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Service;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.media.MediaPlayer;
+import android.os.IBinder;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 
@@ -21,15 +32,18 @@ public class GameView extends SurfaceView implements Runnable {
     private Canvas canvas;
     private SurfaceHolder surfaceHolder;
 
-    private Enemy[] enemies;
+    private Enemy enemies;
 
-    private int enemyCount = 3;
+    //created a reference of the class Friend
+    private Friend friend;
+
 
     private ArrayList<Star> stars = new
             ArrayList<Star>();
 
     //defining a boom object to display blast
     private Boom boom;
+
 
     public GameView(Context context, int screenX, int screenY) {
         super(context);
@@ -44,14 +58,16 @@ public class GameView extends SurfaceView implements Runnable {
             stars.add(s);
         }
 
-        enemies = new Enemy[enemyCount];
-        for (int i = 0; i < enemyCount; i++) {
-            enemies[i] = new Enemy(context, screenX, screenY);
-        }
+        //single enemy initialization
+        enemies = new Enemy(context, screenX, screenY);
 
         //initializing boom object
         boom = new Boom(context);
+
+        //initializing the Friend class object
+        friend = new Friend(context, screenX, screenY);
     }
+
 
     @Override
     public void run() {
@@ -64,7 +80,6 @@ public class GameView extends SurfaceView implements Runnable {
 
     private void update() {
         player.update();
-
         //setting boom outside the screen
         boom.setX(-250);
         boom.setY(-250);
@@ -73,20 +88,18 @@ public class GameView extends SurfaceView implements Runnable {
             s.update(player.getSpeed());
         }
 
-        for (int i = 0; i < enemyCount; i++) {
-            enemies[i].update(player.getSpeed());
-
-            //if collision occurrs with player
-            if (Rect.intersects(player.getDetectCollision(), enemies[i].getDetectCollision())) {
-
-                //displaying boom at that location
-                boom.setX(enemies[i].getX());
-                boom.setY(enemies[i].getY());
-
-                enemies[i].setX(-200);
-
-            }
+        enemies.update(player.getSpeed());
+        //if collision occurs with player
+        if (Rect.intersects(player.getDetectCollision(), enemies.getDetectCollision())) {
+            //displaying boom at that location
+            boom.setX(enemies.getX());
+            boom.setY(enemies.getY());
+            //will play a sound at the collision between player and the enemy
+            enemies.setX(-200);
         }
+
+        //updating the friend ships coordinates
+        friend.update(player.getSpeed());
     }
 
     private void draw() {
@@ -95,6 +108,7 @@ public class GameView extends SurfaceView implements Runnable {
             canvas.drawColor(Color.BLACK);
 
             paint.setColor(Color.WHITE);
+            paint.setTextSize(20);
 
             for (Star s : stars) {
                 paint.setStrokeWidth(s.getStarWidth());
@@ -107,14 +121,12 @@ public class GameView extends SurfaceView implements Runnable {
                     player.getY(),
                     paint);
 
-            for (int i = 0; i < enemyCount; i++) {
-                canvas.drawBitmap(
-                        enemies[i].getBitmap(),
-                        enemies[i].getX(),
-                        enemies[i].getY(),
-                        paint
-                );
-            }
+            canvas.drawBitmap(
+                    enemies.getBitmap(),
+                    enemies.getX(),
+                    enemies.getY(),
+                    paint
+            );
 
             //drawing boom image
             canvas.drawBitmap(
@@ -124,8 +136,15 @@ public class GameView extends SurfaceView implements Runnable {
                     paint
             );
 
-            surfaceHolder.unlockCanvasAndPost(canvas);
+            //drawing friends image
+            canvas.drawBitmap(
 
+                    friend.getBitmap(),
+                    friend.getX(),
+                    friend.getY(),
+                    paint
+            );
+            surfaceHolder.unlockCanvasAndPost(canvas);
         }
     }
 
@@ -150,7 +169,6 @@ public class GameView extends SurfaceView implements Runnable {
         gameThread = new Thread(this);
         gameThread.start();
     }
-
 
     @Override
     public boolean onTouchEvent(MotionEvent motionEvent) {
