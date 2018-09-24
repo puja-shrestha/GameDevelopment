@@ -8,6 +8,8 @@ import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
+import java.util.ArrayList;
+
 public class GameView extends SurfaceView implements Runnable {
 
     //boolean variable to track if the game is playing or not
@@ -24,6 +26,9 @@ public class GameView extends SurfaceView implements Runnable {
     private Canvas canvas;
     private SurfaceHolder surfaceHolder;
 
+    //adding an stars list
+    private ArrayList<Star> stars = new ArrayList<Star>();
+
     //Class constructor
     public GameView(Context context, int screenX, int screenY) {
         super(context);
@@ -35,6 +40,13 @@ public class GameView extends SurfaceView implements Runnable {
         //initalizing drawing objects
         surfaceHolder = getHolder();
         paint = new Paint();
+
+        //adding 100 stars you may increase the number
+        int starNums = 100;
+        for (int i = 0; i < starNums; i++) {
+            Star s = new Star(screenX, screenY);
+            stars.add(s);
+        }
     }
 
     @Override
@@ -56,6 +68,11 @@ public class GameView extends SurfaceView implements Runnable {
 
         //updating player position
         player.update();
+
+        //updating teh star with player speed
+        for (Star s : stars) {
+            s.update(player.getSpeed());
+        }
     }
 
     private void draw(){
@@ -67,6 +84,16 @@ public class GameView extends SurfaceView implements Runnable {
             canvas = surfaceHolder.lockCanvas();
             //drawing a background color for canvas
             canvas.drawColor(Color.BLACK);
+
+            //setting the paint color to white to draw the stars
+            paint.setColor(Color.WHITE);
+
+            //drawing all stars
+            for (Star s : stars) {
+                paint.setStrokeWidth(s.getStarWidth());
+                canvas.drawPoint(s.getX(), s.getY(), paint);
+            }
+
             //drawing the player
             canvas.drawBitmap(
                     player.getBitmap(),
@@ -75,7 +102,6 @@ public class GameView extends SurfaceView implements Runnable {
                     paint);
             //Unlocking the canvas
             surfaceHolder.unlockCanvasAndPost(canvas);
-
         }
     }
 
